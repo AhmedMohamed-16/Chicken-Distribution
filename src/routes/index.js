@@ -48,8 +48,15 @@ router.delete('/vehicles/:id', authenticate, authorize('ADMIN'), vehicleControll
 // Chicken Type & Cost Category routes
 router.get('/chicken-types', authenticate, operationController.getChickenTypes);
 router.post('/chicken-types', authenticate, authorize('ADMIN'), operationController.createChickenType);
+router.get('/chicken-types/:id', authenticate, operationController.getChickenTypeById);
+router.put('/chicken-types/:id', authenticate, authorize('ADMIN'), operationController.updateChickenType);
+router.delete('/chicken-types/:id', authenticate, authorize('ADMIN'), operationController.deleteChickenType);
 router.get('/cost-categories', authenticate, operationController.getCostCategories);
 router.post('/cost-categories', authenticate, authorize('ADMIN'), operationController.createCostCategory);
+router.get('/cost-categories/:id', authenticate, operationController.getCostCategory);
+router.put('/cost-categories/:id', authenticate, authorize('ADMIN'), operationController.updateCostCategory);
+router.delete('/cost-categories/:id', authenticate, authorize('ADMIN'), operationController.deleteCostCategory);
+
 
 // Daily Operation routes
 router.post('/daily-operations/start', authenticate, operationController.startDailyOperation);

@@ -1,4 +1,4 @@
-const { Vehicle, Partner, VehiclePartner } = require('../models');
+const { Vehicle, Partner, VehiclePartner,sequelize } = require('../models');
 
 exports.getAllVehicles = async (req, res) => {
   try {

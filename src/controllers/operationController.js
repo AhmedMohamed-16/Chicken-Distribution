@@ -10,7 +10,10 @@ const {
   Vehicle,
   ChickenType,
   CostCategory,
-  sequelize
+  sequelize,
+  ProfitDistribution,
+  PartnerProfit,
+  Partner
 } = require('../models');
 const ProfitService = require('../services/ProfitService');
 
@@ -28,9 +31,11 @@ exports.startDailyOperation = async (req, res) => {
 
     if (existing) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'Daily operation already exists for this date'
+      return res.status(200).json({
+        success: true,
+        message: 'Daily operation already exists for this date',
+        alreadyExists:true,
+        data:existing
       });
     }
 
@@ -58,26 +63,92 @@ exports.startDailyOperation = async (req, res) => {
 };
 
 // Get operation by ID
+// exports.getOperation = async (req, res) => {
+//   try {
+//     const operation = await DailyOperation.findByPk(req.params.id, {
+//       include: [
+//         { model: Vehicle },
+//         { 
+//           model: FarmTransaction,
+//           include: [{ model: Farm }, { model: ChickenType }]
+//         },
+//         { 
+//           model: SaleTransaction,
+//           include: [{ model: Buyer }, { model: ChickenType }]
+//         },
+//         { 
+//           model: TransportLoss,
+//           include: [{ model: ChickenType }]
+//         },
+//         { 
+//           model: DailyCost,
+//           include: [{ model: CostCategory }]
+//         }
+//       ]
+//     });
+
+//     if (!operation) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Operation not found'
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       data: operation
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: 'Error fetching operation'
+//     });
+//   }
+// };
 exports.getOperation = async (req, res) => {
   try {
     const operation = await DailyOperation.findByPk(req.params.id, {
       include: [
         { model: Vehicle },
-        { 
+
+        {
           model: FarmTransaction,
           include: [{ model: Farm }, { model: ChickenType }]
         },
-        { 
+
+        {
           model: SaleTransaction,
           include: [{ model: Buyer }, { model: ChickenType }]
         },
-        { 
+
+        {
           model: TransportLoss,
           include: [{ model: ChickenType }]
         },
-        { 
+
+        {
           model: DailyCost,
           include: [{ model: CostCategory }]
+        },
+
+        // ✅ PROFIT DISTRIBUTION (المهم)
+        {
+          model: ProfitDistribution,
+          as: 'profit_distribution',
+          required: false,
+          include: [
+            {
+              model: PartnerProfit,
+              as: 'partner_profits',
+              include: [
+                {
+                  model: Partner,
+                  as: 'partner',
+                  attributes: ['id', 'name', 'investment_percentage', 'is_vehicle_partner']
+                }
+              ]
+            }
+          ]
         }
       ]
     });
@@ -93,10 +164,12 @@ exports.getOperation = async (req, res) => {
       success: true,
       data: operation
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error fetching operation'
+      message: 'Error fetching operation',
+      error: error.message
     });
   }
 };
@@ -112,7 +185,7 @@ exports.recordFarmLoading = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: 'Operation not found or already closed'
+        message: 'العملية غير موجودة أو مغلقة بالفعل'
       });
     }
 
@@ -183,7 +256,7 @@ exports.recordTransportLoss = async (req, res) => {
     if (!operation || operation.status === 'CLOSED') {
       return res.status(400).json({
         success: false,
-        message: 'Operation not found or already closed'
+        message: 'العملية غير موجودة أو مغلقة بالفعل'
       });
     }
 
@@ -219,7 +292,7 @@ exports.recordDailyCost = async (req, res) => {
     if (!operation || operation.status === 'CLOSED') {
       return res.status(400).json({
         success: false,
-        message: 'Operation not found or already closed'
+        message: 'العملية غير موجودة أو مغلقة بالفعل'
       });
     }
 
@@ -251,7 +324,7 @@ exports.recordSale = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: 'Operation not found or already closed'
+        message: 'العملية غير موجودة أو مغلقة بالفعل'
       });
     }
 
@@ -358,7 +431,8 @@ exports.closeDailyOperation = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error closing operation',
-      error: error.message
+      error: error.message,
+      data: profitDistribution
     });
   }
 };
@@ -402,6 +476,80 @@ exports.createChickenType = async (req, res) => {
   }
 };
 
+// Get single chicken type
+exports.getChickenTypeById = async (req, res) => {
+  try {
+    const { ChickenType } = require('../models');
+    const type = await ChickenType.findByPk(req.params.id);
+
+    if (!type) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chicken type not found'
+      });
+    }
+
+    res.json({ success: true, data: type });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching chicken type',
+      error: error.message
+    });
+  }
+};
+
+// Update chicken type
+exports.updateChickenType = async (req, res) => {
+  try {
+    const { ChickenType } = require('../models');
+    const type = await ChickenType.findByPk(req.params.id);
+
+    if (!type) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chicken type not found'
+      });
+    }
+
+    await type.update(req.body);
+
+    res.json({ success: true, data: type });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating chicken type',
+      error: error.message
+    });
+  }
+};
+
+// Delete chicken type
+exports.deleteChickenType = async (req, res) => {
+  try {
+    const { ChickenType } = require('../models');
+    const type = await ChickenType.findByPk(req.params.id);
+
+    if (!type) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chicken type not found'
+      });
+    }
+
+    await type.destroy();
+
+    res.json({ success: true, message: 'Chicken type deleted' });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting chicken type',
+      error: error.message
+    });
+  }
+};
+
+
 // Get cost categories
 exports.getCostCategories = async (req, res) => {
   try {
@@ -439,6 +587,86 @@ exports.createCostCategory = async (req, res) => {
     });
   }
 };
+
+// Get cost category by ID
+exports.getCostCategory = async (req, res) => {
+  try {
+    const { CostCategory } = require('../models');
+    const category = await CostCategory.findByPk(req.params.id);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cost category not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: category
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching cost category'
+    });
+  }
+};
+
+// Update cost category
+exports.updateCostCategory = async (req, res) => {
+  try {
+    const { CostCategory } = require('../models');
+    const category = await CostCategory.findByPk(req.params.id);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cost category not found'
+      });
+    }
+
+    await category.update(req.body);
+
+    res.json({
+      success: true,
+      data: category
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating cost category'
+    });
+  }
+};
+
+// Delete cost category
+exports.deleteCostCategory = async (req, res) => {
+  try {
+    const { CostCategory } = require('../models');
+    const category = await CostCategory.findByPk(req.params.id);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cost category not found'
+      });
+    }
+
+    await category.destroy();
+
+    res.json({
+      success: true,
+      message: 'Cost category deleted'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting cost category'
+    });
+  }
+};
+
 
 // Get operation by date
 exports.getOperationByDate = async (req, res) => {

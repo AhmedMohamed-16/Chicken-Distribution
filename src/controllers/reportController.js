@@ -20,41 +20,40 @@ exports.getDailyReport = async (req, res) => {
     const { date } = req.params;
 
     const operation = await DailyOperation.findOne({
-      where: { operation_date: date },
+  where: { operation_date: date },
+  include: [
+    {
+      model: FarmTransaction,
+      include: [Farm, ChickenType]
+    },
+    {
+      model: SaleTransaction,
+      include: [Buyer, ChickenType]
+    },
+    {
+      model: TransportLoss,
+      include: [ChickenType]
+    },
+    {
+      model: DailyCost,
+      include: [CostCategory]
+    },
+    {
+      model: ProfitDistribution,
+      as: 'profit_distribution',   // ✅ لازم تكتب نفس الاسم هنا
       include: [
         {
-          model: FarmTransaction,
+          model: PartnerProfit,
+          as: 'partner_profits',    // ✅ نفس الاسم هنا
           include: [
-            { model: Farm },
-            { model: ChickenType }
-          ]
-        },
-        {
-          model: SaleTransaction,
-          include: [
-            { model: Buyer },
-            { model: ChickenType }
-          ]
-        },
-        {
-          model: TransportLoss,
-          include: [{ model: ChickenType }]
-        },
-        {
-          model: DailyCost,
-          include: [{ model: CostCategory }]
-        },
-        {
-          model: ProfitDistribution,
-          include: [
-            {
-              model: PartnerProfit,
-              include: [{ model: Partner }]
-            }
+            { model: Partner, as: 'partner' } // ✅ و هنا
           ]
         }
       ]
-    });
+    }
+  ]
+});
+
 
     if (!operation) {
       return res.status(404).json({
@@ -87,13 +86,13 @@ exports.getDailyReport = async (req, res) => {
           total_sales: totalSales,
           total_losses: totalLosses,
           total_costs: totalCosts,
-          net_profit: operation.ProfitDistribution?.net_profit || 0
+          net_profit: operation.profit_distribution?.net_profit || 0
         },
         farm_transactions: operation.FarmTransactions,
         sales: operation.SaleTransactions,
         losses: operation.TransportLosses,
         costs: operation.DailyCosts,
-        profit_distribution: operation.ProfitDistribution
+        profit_distribution: operation.profit_distribution
       }
     });
   } catch (error) {
@@ -105,10 +104,94 @@ exports.getDailyReport = async (req, res) => {
   }
 };
 
+// exports.getPeriodReport = async (req, res) => {
+//   try {
+//     const { from, to } = req.query;
+
+//     if (!from || !to) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'From and to dates are required'
+//       });
+//     }
+
+//     const operations = await DailyOperation.findAll({
+//       where: {
+//         operation_date: {
+//           [Op.between]: [from, to]
+//         }
+//       },
+//       include: [
+//         {
+//           model: FarmTransaction,
+//           include: [{ model: Farm }, { model: ChickenType }]
+//         },
+//         {
+//           model: SaleTransaction,
+//           include: [{ model: Buyer }, { model: ChickenType }]
+//         },
+//         {
+//           model: TransportLoss,
+//           include: [{ model: ChickenType }]
+//         },
+//         {
+//           model: DailyCost,
+//           include: [{ model: CostCategory }]
+//         },
+//         {
+//           model: ProfitDistribution
+//         }
+//       ],
+//       order: [['operation_date', 'DESC']]
+//     });
+
+//     // Aggregate totals
+//     let totals = {
+//       total_purchases: 0,
+//       total_sales: 0,
+//       total_losses: 0,
+//       total_costs: 0,
+//       total_profit: 0,
+//       days_operated: operations.length
+//     };
+
+//     operations.forEach(op => {
+//       op.FarmTransactions.forEach(t => {
+//         totals.total_purchases += parseFloat(t.total_amount);
+//       });
+//       op.SaleTransactions.forEach(t => {
+//         totals.total_sales += parseFloat(t.total_amount);
+//       });
+//       op.TransportLosses.forEach(l => {
+//         totals.total_losses += parseFloat(l.loss_amount);
+//       });
+//       op.DailyCosts.forEach(c => {
+//         totals.total_costs += parseFloat(c.amount);
+//       });
+//       if (op.ProfitDistribution) {
+//         totals.total_profit += parseFloat(op.ProfitDistribution.net_profit);
+//       }
+//     });
+
+//     res.json({
+//       success: true,
+//       data: {
+//         period: { from, to },
+//         totals,
+//         operations
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: 'Error generating period report'
+//     });
+//   }
+// };
 exports.getPeriodReport = async (req, res) => {
   try {
     const { from, to } = req.query;
-
+    console.log(from,to)
     if (!from || !to) {
       return res.status(400).json({
         success: false,
@@ -116,37 +199,34 @@ exports.getPeriodReport = async (req, res) => {
       });
     }
 
+    // التحقق من صيغة التاريخ
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(from) || !dateRegex.test(to)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
+      });
+    }
+
     const operations = await DailyOperation.findAll({
       where: {
         operation_date: {
-          [Op.between]: [from, to]
+          [Op.between]: [
+            new Date(from + 'T00:00:00'),
+            new Date(to + 'T23:59:59')
+          ]
         }
-      },
+      } ,
       include: [
-        {
-          model: FarmTransaction,
-          include: [{ model: Farm }, { model: ChickenType }]
-        },
-        {
-          model: SaleTransaction,
-          include: [{ model: Buyer }, { model: ChickenType }]
-        },
-        {
-          model: TransportLoss,
-          include: [{ model: ChickenType }]
-        },
-        {
-          model: DailyCost,
-          include: [{ model: CostCategory }]
-        },
-        {
-          model: ProfitDistribution
-        }
+        { model: FarmTransaction, include: [Farm, ChickenType] },
+        { model: SaleTransaction, include: [Buyer, ChickenType] },
+        { model: TransportLoss, include: [ChickenType] },
+        { model: DailyCost, include: [CostCategory] },
+        { model: ProfitDistribution, as: 'profit_distribution' } // استخدم الـ alias
       ],
       order: [['operation_date', 'DESC']]
     });
 
-    // Aggregate totals
     let totals = {
       total_purchases: 0,
       total_sales: 0,
@@ -157,39 +237,25 @@ exports.getPeriodReport = async (req, res) => {
     };
 
     operations.forEach(op => {
-      op.FarmTransactions.forEach(t => {
-        totals.total_purchases += parseFloat(t.total_amount);
-      });
-      op.SaleTransactions.forEach(t => {
-        totals.total_sales += parseFloat(t.total_amount);
-      });
-      op.TransportLosses.forEach(l => {
-        totals.total_losses += parseFloat(l.loss_amount);
-      });
-      op.DailyCosts.forEach(c => {
-        totals.total_costs += parseFloat(c.amount);
-      });
-      if (op.ProfitDistribution) {
-        totals.total_profit += parseFloat(op.ProfitDistribution.net_profit);
-      }
+      op.FarmTransactions.forEach(t => totals.total_purchases += parseFloat(t.total_amount));
+      op.SaleTransactions.forEach(t => totals.total_sales += parseFloat(t.total_amount));
+      op.TransportLosses.forEach(l => totals.total_losses += parseFloat(l.loss_amount));
+      op.DailyCosts.forEach(c => totals.total_costs += parseFloat(c.amount));
+      if (op.profit_distribution) totals.total_profit += parseFloat(op.profit_distribution.net_profit);
     });
 
     res.json({
       success: true,
-      data: {
-        period: { from, to },
-        totals,
-        operations
-      }
+      data: { period: { from, to }, totals, operations }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error generating period report'
+      message: 'Error generating period report',
+      error: error.message
     });
   }
 };
-
 exports.getPartnerProfitReport = async (req, res) => {
   try {
     const { from, to } = req.query;
@@ -210,7 +276,8 @@ exports.getPartnerProfitReport = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error generating partner profit report'
+      message: 'Error generating partner profit report',
+      error:error.message
     });
   }
 };

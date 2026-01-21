@@ -56,13 +56,13 @@ const setupAssociations = () => {
   DailyOperation.hasMany(DailyCost, { foreignKey: 'daily_operation_id' });
 
   // ProfitDistribution relationships
-  ProfitDistribution.belongsTo(DailyOperation, { foreignKey: 'daily_operation_id' });
-  DailyOperation.hasOne(ProfitDistribution, { foreignKey: 'daily_operation_id' });
+  ProfitDistribution.belongsTo(DailyOperation, { foreignKey: 'daily_operation_id', as: 'daily_operation' });
+  DailyOperation.hasOne(ProfitDistribution, { foreignKey: 'daily_operation_id',  as: 'profit_distribution' });
 
   // PartnerProfit relationships
-  PartnerProfit.belongsTo(ProfitDistribution, { foreignKey: 'profit_distribution_id' });
-  PartnerProfit.belongsTo(Partner, { foreignKey: 'partner_id' });
-  ProfitDistribution.hasMany(PartnerProfit, { foreignKey: 'profit_distribution_id' });
+  PartnerProfit.belongsTo(ProfitDistribution, { foreignKey: 'profit_distribution_id' ,  as: 'profit_distribution'});
+  PartnerProfit.belongsTo(Partner, { foreignKey: 'partner_id' ,  as: 'partner'});
+  ProfitDistribution.hasMany(PartnerProfit, { foreignKey: 'profit_distribution_id' ,  as: 'partner_profits'});
 
   // Debt Payment relationships
   FarmDebtPayment.belongsTo(Farm, { foreignKey: 'farm_id' });

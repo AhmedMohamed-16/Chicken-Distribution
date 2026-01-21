@@ -6,7 +6,8 @@ const {
   ProfitDistribution,
   PartnerProfit,
   Partner,
-  CostCategory
+  CostCategory,
+  DailyOperation
 } = require('../models');
 const { Op } = require('sequelize');
 
@@ -154,70 +155,77 @@ class ProfitService {
    * @param {string} toDate 
    * @returns {Object} Aggregated profit data
    */
-  async getProfitReport(fromDate, toDate) {
-    const distributions = await ProfitDistribution.findAll({
-      include: [
-        {
-          model: DailyOperation,
-          where: {
-            operation_date: {
-              [Op.between]: [fromDate, toDate]
-            }
+ async getProfitReport(fromDate, toDate) {
+  const distributions = await ProfitDistribution.findAll({
+    include: [
+      {
+        model: DailyOperation,
+        as: 'daily_operation',
+        where: {
+          operation_date: {
+            [Op.between]: [fromDate, toDate]
           }
-        },
-        {
-          model: PartnerProfit,
-          include: [{ model: Partner }]
         }
-      ],
-      order: [[DailyOperation, 'operation_date', 'DESC']]
+      },
+      {
+        model: PartnerProfit,
+        as: 'partner_profits',
+        include: [
+          { model: Partner, as: 'partner' }
+        ]
+      }
+    ],
+    order: [
+      [{ model: DailyOperation, as: 'daily_operation' }, 'operation_date', 'DESC']
+    ]
+  });
+
+  const totals = {
+    total_revenue: 0,
+    total_purchases: 0,
+    total_losses: 0,
+    total_costs: 0,
+    vehicle_costs: 0,
+    net_profit: 0
+  };
+
+  const partnerTotals = {};
+
+  distributions.forEach(dist => {
+    totals.total_revenue += parseFloat(dist.total_revenue);
+    totals.total_purchases += parseFloat(dist.total_purchases);
+    totals.total_losses += parseFloat(dist.total_losses);
+    totals.total_costs += parseFloat(dist.total_costs);
+    totals.vehicle_costs += parseFloat(dist.vehicle_costs);
+    totals.net_profit += parseFloat(dist.net_profit);
+
+    dist.partner_profits.forEach(pp => {
+      const partnerId = pp.partner_id;
+
+      if (!partnerTotals[partnerId]) {
+        partnerTotals[partnerId] = {
+          partner_id: partnerId,
+          partner_name: pp.partner.name,
+          total_base_share: 0,
+          total_vehicle_cost_share: 0,
+          total_final_profit: 0
+        };
+      }
+
+      partnerTotals[partnerId].total_base_share += parseFloat(pp.base_profit_share);
+      partnerTotals[partnerId].total_vehicle_cost_share += parseFloat(pp.vehicle_cost_share);
+      partnerTotals[partnerId].total_final_profit += parseFloat(pp.final_profit);
     });
+  });
 
-    // Aggregate totals
-    const totals = {
-      total_revenue: 0,
-      total_purchases: 0,
-      total_losses: 0,
-      total_costs: 0,
-      vehicle_costs: 0,
-      net_profit: 0
-    };
+  return {
+    period: { from: fromDate, to: toDate },
+    totals,
+    partner_totals: Object.values(partnerTotals),
+    daily_distributions: distributions
+  };
+}
 
-    const partnerTotals = {};
-
-    distributions.forEach(dist => {
-      totals.total_revenue += parseFloat(dist.total_revenue);
-      totals.total_purchases += parseFloat(dist.total_purchases);
-      totals.total_losses += parseFloat(dist.total_losses);
-      totals.total_costs += parseFloat(dist.total_costs);
-      totals.vehicle_costs += parseFloat(dist.vehicle_costs);
-      totals.net_profit += parseFloat(dist.net_profit);
-
-      // Aggregate partner profits
-      dist.PartnerProfits.forEach(pp => {
-        const partnerId = pp.partner_id;
-        if (!partnerTotals[partnerId]) {
-          partnerTotals[partnerId] = {
-            partner_id: partnerId,
-            partner_name: pp.Partner.name,
-            total_base_share: 0,
-            total_vehicle_cost_share: 0,
-            total_final_profit: 0
-          };
-        }
-        partnerTotals[partnerId].total_base_share += parseFloat(pp.base_profit_share);
-        partnerTotals[partnerId].total_vehicle_cost_share += parseFloat(pp.vehicle_cost_share);
-        partnerTotals[partnerId].total_final_profit += parseFloat(pp.final_profit);
-      });
-    });
-
-    return {
-      period: { from: fromDate, to: toDate },
-      totals,
-      partner_totals: Object.values(partnerTotals),
-      daily_distributions: distributions
-    };
-  }
 }
 
 module.exports = new ProfitService();
