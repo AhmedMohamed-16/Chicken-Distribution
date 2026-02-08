@@ -1,8 +1,10 @@
 // src/controllers/farmController.js
-const { Farm, FarmTransaction, FarmDebtPayment, DailyOperation } = require('../models');
+const { Farm, FarmTransaction, FarmDebtPayment, DailyOperation, ChickenType } = require('../models');
 const { sequelize } = require('../config/database');
+const { Op } = require('sequelize');
+const AppError = require('../utils/app-error.utility');
 
-exports.getAllFarms = async (req, res) => {
+exports.getAllFarms = async (req, res,next) => {
   try {
     const farms = await Farm.findAll({
       order: [['name', 'ASC']]
@@ -13,24 +15,66 @@ exports.getAllFarms = async (req, res) => {
       data: farms
     });
   } catch (error) {
-    console.error('Error fetching farms:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching farms',
-      error: error.message
-    });
+        next(new AppError( 'حدث خطأ أثناء جلب المزارع'));
   }
 };
+exports.getPaginationAllFarms = async (req, res,next) => {
+  try {
+    const { page = 1, limit = 50, search ,has_debt} = req.query;
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    const where = {};
+    
+    // Search filter
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { owner_name: { [Op.iLike]: `%${search}%` } },
+        { location: { [Op.iLike]: `%${search}%` } },
+        { phone: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+        if (has_debt === 'true') {
+      where.current_balance = { [Op.gt]: 0 };
+    } else if (has_debt === 'false') {
+      where.current_balance =  { [Op.lt]: 0 };
+    }
 
-exports.getFarmById = async (req, res) => {
+
+    const { count, rows: farms } = await Farm.findAndCountAll({
+      where,
+      order: [['name', 'ASC']],
+      limit: parseInt(limit),
+      offset
+    });
+    console.log("farms",farms);
+    
+    res.json({
+      success: true,
+      data: {
+        items: farms,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total_pages: Math.ceil(count / parseInt(limit))
+        }
+      }
+    });
+    
+  } catch (error) {   
+        next(new AppError( 'حدث خطأ أثناء جلب المزارع'));
+
+  }
+};
+exports.getFarmById = async (req, res,next) => {
   try {
     const farm = await Farm.findByPk(req.params.id);
 
     if (!farm) {
-      return res.status(404).json({
-        success: false,
-        message: 'Farm not found'
-      });
+             next(new AppError( 'لم يتم العثور على المزرعة',404));
+
     }
 
     res.json({
@@ -38,41 +82,35 @@ exports.getFarmById = async (req, res) => {
       data: farm
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching farm',
-      error: error.message
-    });
+     next(new AppError( 'حدث خطأ أثناء جلب المزارع'));
+
   }
 };
 
-exports.createFarm = async (req, res) => {
+exports.createFarm = async (req, res,next) => {
   try {
+    console.log("\nreq.body",req.body);
+    
     const farm = await Farm.create(req.body);
 
     res.status(201).json({
       success: true,
-      message: 'Farm created successfully',
+      message: 'تم إنشاء المزرعة بنجاح',
       data: farm
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error creating farm',
-      error: error.message
-    });
-  }
+ next(new AppError( 'حدث خطأ أثناء جلب المزارع'));
+}
+
 };
 
-exports.updateFarm = async (req, res) => {
+exports.updateFarm = async (req, res,next) => {
   try {
     const farm = await Farm.findByPk(req.params.id);
 
     if (!farm) {
-      return res.status(404).json({
-        success: false,
-        message: 'Farm not found'
-      });
+                next(new AppError( 'لم يتم العثور على المزرعة',404));
+
     }
 
     // Don't allow manual update of total_debt through this endpoint
@@ -82,27 +120,21 @@ exports.updateFarm = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Farm updated successfully',
+      message: 'تم تحديث المزرعة بنجاح',
       data: farm
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error updating farm',
-      error: error.message
-    });
+    next(new AppError( 'حدث خطأ أثناء جلب المزارع'));
   }
 };
 
-exports.deleteFarm = async (req, res) => {
+exports.deleteFarm = async (req, res,next) => {
   try {
     const farm = await Farm.findByPk(req.params.id);
 
     if (!farm) {
-      return res.status(404).json({
-        success: false,
-        message: 'Farm not found'
-      });
+             next(new AppError( 'لم يتم العثور على المزرعة',404));
+
     }
 
     // Check if farm has any transactions
@@ -111,70 +143,350 @@ exports.deleteFarm = async (req, res) => {
     });
 
     if (transactionCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete farm with existing transactions'
-      });
+    next(new AppError( 'لا يمكن حذف المزرعة التي تحتوي على معاملات موجودة',400));
     }
 
     await farm.destroy();
 
     res.json({
       success: true,
-      message: 'Farm deleted successfully'
+      message: 'تم حذف المزرعة بنجاح'
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting farm',
-      error: error.message
-    });
+  next(new AppError( 'خطأ في حذف المزرعة'));
   }
 };
 
-exports.getFarmDebtHistory = async (req, res) => {
-  try {
-    const farm = await Farm.findByPk(req.params.id);
+// exports.getFarmDebtHistory = async (req, res) => {
+//   try {
+//     const farm = await Farm.findByPk(req.params.id);
 
+//     if (!farm) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Farm not found'
+//       });
+//     }
+
+//     // Get all farm transactions
+//     const transactions = await FarmTransaction.findAll({
+//       where: { farm_id: req.params.id },
+//       include: [
+//         {
+//           model: DailyOperation,as:"operation",
+//           attributes: ['id', 'operation_date']
+//         }
+//       ],
+//       order: [['transaction_time', 'DESC']]
+//     });
+
+//     // Get all debt payments
+//     const payments = await FarmDebtPayment.findAll({
+//       where: { farm_id: req.params.id },
+//       include: [
+//         {
+//           model: DailyOperation,as:"operation",
+//           attributes: ['id', 'operation_date'],
+//           required: false
+//         }
+//       ],
+//       order: [['payment_date', 'DESC']]
+//     });
+
+//     res.json({
+//       success: true,
+//       data: {
+//         farm,
+//         current_debt: farm.total_debt,
+//         transactions,
+//         payments,
+//         summary: {
+//           total_purchases: transactions.length,
+//           total_payments: payments.length,
+//           total_amount_purchased: transactions.reduce((sum, t) => sum + parseFloat(t.total_amount), 0),
+//           total_amount_paid: transactions.reduce((sum, t) => sum + parseFloat(t.paid_amount), 0)
+//         }
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Error fetching farm debt history:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Error fetching debt history',
+//       error: error.message
+//     });
+//   }
+// };
+
+// Record a standalone debt payment to farm
+// exports.getFarmDebtHistory = async (req, res,next) => {
+//   try {
+//     const farm = await Farm.findByPk(req.params.id);
+
+//     if (!farm) {
+//                  next(new AppError( 'لم يتم العثور على المزرعة',404));
+
+//     }
+
+//     // Get all farm transactions
+//     const transactions = await FarmTransaction.findAll({
+//       where: { farm_id: req.params.id },
+//       include: [
+//         {
+//           model: DailyOperation,
+//           as: "operation",
+//           attributes: ['id', 'operation_date']
+//         }
+//       ],
+//       order: [['transaction_time', 'ASC']]
+//     });
+
+//     // Get all debt payments
+//     const payments = await FarmDebtPayment.findAll({
+//       where: { farm_id: req.params.id },
+//       include: [
+//         {
+//           model: DailyOperation,
+//           as: "operation",
+//           attributes: ['id', 'operation_date'],
+//           required: false
+//         }
+//       ],
+//       order: [['payment_date', 'ASC']]
+//     });
+
+//     // Merge and sort all events chronologically
+//     const events = [];
+
+//     // Add transactions
+//     transactions.forEach(t => {
+//       events.push({
+//         date: t.transaction_time,
+//         type: 'transaction',
+//         transaction_id: t.id,
+//         total_amount: parseFloat(t.total_amount),
+//         paid_amount: parseFloat(t.paid_amount),
+//         remaining_amount: parseFloat(t.remaining_amount),
+//         raw_data: t
+//       });
+//     });
+
+//     // Add payments
+//     payments.forEach(p => {
+//       const amount = parseFloat(p.amount);
+//       const direction = p.payment_direction;
+      
+//       events.push({
+//         date: p.payment_date,
+//         type: 'payment',
+//         payment_id: p.id,
+//         amount: amount,
+//         payment_direction: direction,
+//         // FROM_FARM = reduces debt, TO_FARM = increases debt
+//         debt_impact: direction === 'FROM_FARM' ? -amount : amount,
+//         raw_data: p
+//       });
+//     });
+
+//     // Sort by date ascending
+//     events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+//     // Calculate cumulative debt
+//     let cumulativeDebt = 0;
+//     const history = [];
+
+//     events.forEach(event => {
+//       if (event.type === 'transaction') {
+//         // For transaction: debt increases by remaining_amount
+//         const debtIncrease = event.remaining_amount;
+//         cumulativeDebt += debtIncrease;
+
+//         history.push({
+//           date: event.date,
+//           type: 'transaction',
+//           transaction_id: event.transaction_id,
+//           total_amount: event.total_amount,
+//           paid_amount: event.paid_amount,
+//           remaining_amount: event.remaining_amount,
+//           debt_before: cumulativeDebt - debtIncrease,
+//           debt_change: debtIncrease,
+//           debt_after: cumulativeDebt,
+//           raw_data: event.raw_data
+//         });
+//       } else if (event.type === 'payment') {
+//         // For payment: apply debt impact based on direction
+//         const debtChange = event.debt_impact;
+//         cumulativeDebt += debtChange;
+
+//         history.push({
+//           date: event.date,
+//           type: 'payment',
+//           payment_id: event.payment_id,
+//           amount: event.amount,
+//           payment_direction: event.payment_direction,
+//           debt_before: cumulativeDebt - debtChange,
+//           debt_change: debtChange,
+//           debt_after: cumulativeDebt,
+//           raw_data: event.raw_data
+//         });
+//       }
+//     });
+
+//      history.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+//     res.json({
+//       success: true,
+//       data: {
+//         farm,
+//         current_balance: parseFloat(farm.current_balance),
+//         calculated_balance: cumulativeDebt,
+//         history,
+//         summary: {
+//           total_purchases: transactions.length,
+//           total_payments: payments.length,
+//           total_amount_purchased: transactions.reduce((sum, t) => sum + parseFloat(t.total_amount), 0),
+//           total_amount_paid: transactions.reduce((sum, t) => sum + parseFloat(t.paid_amount), 0)
+//         }
+//       }
+//     });
+//   } catch (error) {
+// next(new AppError( 'خطأ في جلب سجل الديون'));
+//   }
+// };
+  
+
+exports.getFarmDebtHistory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    // default: آخر 7 معاملات، أو اللي اليوزر يحدده
+    const limit = parseInt(req.query.limit) || 7;
+
+    const farm = await Farm.findByPk(id);
     if (!farm) {
-      return res.status(404).json({
-        success: false,
-        message: 'Farm not found'
-      });
+      return next(new AppError('لم يتم العثور على المزرعة', 404));
     }
 
-    // Get all farm transactions
+    // جلب آخر N معاملة فقط
     const transactions = await FarmTransaction.findAll({
-      where: { farm_id: req.params.id },
+      where: { farm_id: id },
       include: [
         {
           model: DailyOperation,
+          as: "operation",
           attributes: ['id', 'operation_date']
         }
       ],
-      order: [['transaction_time', 'DESC']]
+      order: [['transaction_time', 'DESC']],
+      limit: limit
     });
 
-    // Get all debt payments
+    // جلب آخر N دفعة فقط
     const payments = await FarmDebtPayment.findAll({
-      where: { farm_id: req.params.id },
+      where: { farm_id: id },
       include: [
         {
           model: DailyOperation,
+          as: "operation",
           attributes: ['id', 'operation_date'],
           required: false
         }
       ],
-      order: [['payment_date', 'DESC']]
+      order: [['payment_date', 'DESC']],
+      limit: limit
     });
+
+    // دمج الأحداث
+    const events = [];
+
+    transactions.forEach(t => {
+      events.push({
+        date: t.transaction_time,
+        type: 'transaction',
+        transaction_id: t.id,
+        total_amount: parseFloat(t.total_amount),
+        paid_amount: parseFloat(t.paid_amount),
+        remaining_amount: parseFloat(t.remaining_amount),
+        raw_data: t
+      });
+    });
+
+    payments.forEach(p => {
+      const amount = parseFloat(p.amount);
+      const direction = p.payment_direction;
+      
+      events.push({
+        date: p.payment_date,
+        type: 'payment',
+        payment_id: p.id,
+        amount: amount,
+        payment_direction: direction,
+        debt_impact: direction === 'FROM_FARM' ? -amount : amount,
+        raw_data: p
+      });
+    });
+
+    // ترتيب من الأحدث للأقدم
+    events.sort((a, b) => new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+
+    // أخذ آخر N حدث فقط بعد الدمج
+    const recentEvents = events.slice(0, limit);
+
+    // حساب الرصيد التراكمي
+    // نبدأ من الرصيد الحالي ونرجع للخلف
+    let cumulativeDebt = parseFloat(farm.current_balance);
+    
+    const history = recentEvents.map(event => {
+      const debtBefore = cumulativeDebt;
+      
+      if (event.type === 'transaction') {
+        // عند الرجوع للخلف، نطرح الدين اللي اتضاف
+        cumulativeDebt -= event.remaining_amount;
+        
+        return {
+          date: event.date,
+          type: 'transaction',
+          transaction_id: event.transaction_id,
+          total_amount: event.total_amount,
+          paid_amount: event.paid_amount,
+          remaining_amount: event.remaining_amount,
+          debt_before: cumulativeDebt,
+          debt_change: event.remaining_amount,
+          debt_after: debtBefore,
+          raw_data: event.raw_data
+        };
+      } else {
+        // عند الرجوع للخلف، نعكس تأثير الدفعة
+        cumulativeDebt -= event.debt_impact;
+        
+        return {
+          date: event.date,
+          type: 'payment',
+          payment_id: event.payment_id,
+          amount: event.amount,
+          payment_direction: event.payment_direction,
+          debt_before: cumulativeDebt,
+          debt_change: event.debt_impact,
+          debt_after: debtBefore,
+          raw_data: event.raw_data
+        };
+      }
+    });
+
+    // ترتيب من الأقدم للأحدث في النهاية (زي ما كان)
+    history.sort((a, b) => new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+
+    // حساب الـ calculated_balance من أول سجل في الـ history
+    const calculatedBalance = history.length > 0 
+      ? history[history.length - 1].debt_after 
+      : parseFloat(farm.current_balance);
 
     res.json({
       success: true,
       data: {
         farm,
-        current_debt: farm.total_debt,
-        transactions,
-        payments,
+        current_balance: parseFloat(farm.current_balance),
+        calculated_balance: calculatedBalance,
+        history,
         summary: {
           total_purchases: transactions.length,
           total_payments: payments.length,
@@ -184,16 +496,10 @@ exports.getFarmDebtHistory = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching farm debt history:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching debt history',
-      error: error.message
-    });
+    console.error('Error in getFarmDebtHistory:', error);
+    next(new AppError('خطأ في جلب سجل الديون', 500));
   }
 };
-
-// Record a standalone debt payment to farm
 exports.recordDebtPayment = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -204,10 +510,7 @@ exports.recordDebtPayment = async (req, res) => {
 
     if (!farm) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'Farm not found'
-      });
+             next(new AppError( 'لم يتم العثور على المزرعة',404));
     }
 
     // Record payment
@@ -228,16 +531,12 @@ exports.recordDebtPayment = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Debt payment recorded successfully',
+      message: 'تم تسجيل سداد الدين بنجاح',
       data: payment
     });
   } catch (error) {
     await transaction.rollback();
-    res.status(500).json({
-      success: false,
-      message: 'Error recording debt payment',
-      error: error.message
-    });
+next(new AppError( 'خطأ في جلب سجل الديون'));
   }
 };
 

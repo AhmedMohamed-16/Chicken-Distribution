@@ -44,7 +44,7 @@ const Partner = sequelize.define('Partner', {
   tableName: 'partners',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: false
+  updatedAt: true
 });
 
 // Helper function to recalculate all percentages
@@ -57,7 +57,7 @@ async function recalculateAllPercentages(transaction) {
     // If no investment, set all to 0
     await Partner.update(
       { investment_percentage: 0 },
-      { where: {}, hooks: false, transaction }
+      { where: {}, hooks: true, transaction }
     );
     return;
   }
@@ -67,7 +67,7 @@ async function recalculateAllPercentages(transaction) {
     const percentage = (parseFloat(partner.investment_amount) / totalInvestment) * 100;
     await partner.update(
       { investment_percentage: percentage },
-      { hooks: false, transaction }
+      { hooks: true, transaction }
     );
   }
 }
@@ -88,4 +88,4 @@ Partner.afterDestroy(async (partner, options) => {
   await recalculateAllPercentages(options.transaction);
 });
 
-module.exports = Partner;
+module.exports = {Partner,recalculateAllPercentages};

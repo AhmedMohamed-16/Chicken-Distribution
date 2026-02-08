@@ -14,6 +14,13 @@ const SaleTransaction = sequelize.define('SaleTransaction', {
       model: 'daily_operations',
       key: 'id'
     }
+  },  vehicle_id: {  // ✅ NEW FIELD
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'vehicles',
+      key: 'id'
+    }
   },
   buyer_id: {
     type: DataTypes.INTEGER,
@@ -70,11 +77,23 @@ const SaleTransaction = sequelize.define('SaleTransaction', {
   old_debt_paid: {
     type: DataTypes.DECIMAL(12, 2),
     defaultValue: 0
+  },vehicle_operation_id: {
+  type: DataTypes.INTEGER,
+  allowNull: false,
+  references: {
+    model: 'vehicle_operations',
+    key: 'id'
   }
+}
 }, {
   tableName: 'sale_transactions',
   timestamps: true,
   createdAt: 'transaction_time',
-  updatedAt: false
+  updatedAt: false,
+  underscored: true,
+  indexes: [
+    { fields: ['daily_operation_id'] },
+    { fields: ['vehicle_id', 'daily_operation_id'] }  // ✅ NEW INDEX
+  ]
 });
 module.exports = SaleTransaction;

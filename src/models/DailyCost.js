@@ -15,6 +15,14 @@ const DailyCost = sequelize.define('DailyCost', {
       key: 'id'
     }
   },
+  vehicle_id: {  // ✅ NEW FIELD
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'vehicles',
+      key: 'id'
+    }
+  },
   cost_category_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -30,12 +38,26 @@ const DailyCost = sequelize.define('DailyCost', {
   description: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  vehicle_operation_id: {
+  type: DataTypes.INTEGER,
+  allowNull: true,
+  references: {
+    model: 'vehicle_operations',
+    key: 'id'
   }
+}
+
 }, {
   tableName: 'daily_costs',
   timestamps: true,
   createdAt: 'recorded_at',
-  updatedAt: false
+  updatedAt: false,
+  underscored: true,
+  indexes: [
+    { fields: ['daily_operation_id'] },
+    { fields: ['vehicle_id', 'daily_operation_id'] }  // ✅ NEW INDEX
+  ]
 });
 
 module.exports = DailyCost;

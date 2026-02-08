@@ -14,6 +14,13 @@ const TransportLoss = sequelize.define('TransportLoss', {
       model: 'daily_operations',
       key: 'id'
     }
+  },  vehicle_id: {  // ✅ NEW FIELD
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'vehicles',
+      key: 'id'
+    }
   },
   chicken_type_id: {
     type: DataTypes.INTEGER,
@@ -38,12 +45,50 @@ const TransportLoss = sequelize.define('TransportLoss', {
   location: {
     type: DataTypes.TEXT,
     allowNull: true
+  },vehicle_operation_id: {
+  type: DataTypes.INTEGER,
+  allowNull: false,
+  references: {
+    model: 'vehicle_operations',
+    key: 'id'
+  }
+},
+  farm_id: {  // ✅ NEW OPTIONAL FIELD
+    type: DataTypes.INTEGER,
+    allowNull: true,  // Can be NULL if loss is not attributed to specific farm
+    references: {
+      model: 'farms',
+      key: 'id'
+    },
+    comment: 'If set, this farm is responsible for the loss and balance will be adjusted'
+  },
+  notes: {  // ✅ OPTIONAL NOTES
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   tableName: 'transport_losses',
   timestamps: true,
   createdAt: 'recorded_at',
-  updatedAt: false
+  updatedAt: false,
+  underscored: true,
+  indexes: [
+    { fields: ['daily_operation_id'] },
+        { fields: ['farm_id'] },  // ✅ INDEX FOR FARM LOOKUP
+    { fields: ['vehicle_id', 'daily_operation_id'] }  // ✅ NEW INDEX
+  ]
 });
+// ✅ COMPUTED GETTERS
+TransportLoss.prototype.getDisplayInfo = function() {
+  return {
+    id: this.id,
+    dead_weight: parseFloat(this.dead_weight),
+    loss_amount: parseFloat(this.loss_amount),
+    attributed_to_farm: this.farm_id ? true : false,
+    farm_responsible: this.farm_id || null,
+    balance_adjusted: this.farm_balance_adjusted
+  };
+};
+
 
 module.exports = TransportLoss;

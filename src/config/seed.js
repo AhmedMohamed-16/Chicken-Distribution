@@ -1,41 +1,63 @@
-require('dotenv').config();
-const { 
-  sequelize,
-  User, 
-  Partner, 
+// ========================================
+// SEED DATA SCRIPT
+// Adds sample data to database
+// ========================================
+
+const { sequelize, testConnection } = require('./config/database');
+const bcrypt = require('bcryptjs');
+
+// Import models
+const {
+  User,
+  Partner,
   Vehicle,
   VehiclePartner,
   Farm,
   Buyer,
-  ChickenType, 
-  CostCategory
-} = require('../models');
+  ChickenType,
+  CostCategory,
+  Permission,UserPermission
+} = require('./models');
+
+const colors = {
+  reset: '\x1b[0m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[36m'
+};
+
+function log(message, color = 'reset') {
+  console.log(`${colors[color]}${message}${colors.reset}`);
+}
 
 async function seed() {
   try {
-    console.log('🌱 Starting database seeding...');
+    log('\n🌱 Starting database seeding...', 'blue');
 
     // Test connection
-    await sequelize.authenticate();
-    console.log('✅ Database connection successful');
+    const connected = await testConnection();
+    if (!connected) {
+      log('❌ Cannot connect to database', 'red');
+      process.exit(1);
+    }
 
     // ============================================
-    // 1. CREATE DEFAULT USERS
+    // 1. USERS
     // ============================================
-    console.log('\n👤 Creating users...');
+    log('\n👤 Creating users...', 'blue');
     
     const adminExists = await User.findOne({ where: { username: 'admin' } });
     if (!adminExists) {
       await User.create({
         username: 'admin',
-        password_hash: 'admin123', // Will be hashed by the model hook
+        password_hash: 'admin123', // Will be hashed by model hook
         full_name: 'مدير النظام',
-        role: 'ADMIN',
+        email: 'admin@chicken.local',
         is_active: true
       });
-      console.log('   ✅ Admin user created (username: admin, password: admin123)');
+      log('   ✅ Admin created (username: admin, password: admin123)', 'green');
     } else {
-      console.log('   ⏭️  Admin user already exists');
+      log('   ⏭️  Admin already exists', 'yellow');
     }
 
     const userExists = await User.findOne({ where: { username: 'user' } });
@@ -44,18 +66,18 @@ async function seed() {
         username: 'user',
         password_hash: 'user123',
         full_name: 'مستخدم عادي',
-        role: 'USER',
+        email: 'user@chicken.local',
         is_active: true
       });
-      console.log('   ✅ Regular user created (username: user, password: user123)');
+      log('   ✅ User created (username: user, password: user123)', 'green');
     } else {
-      console.log('   ⏭️  Regular user already exists');
+      log('   ⏭️  User already exists', 'yellow');
     }
 
     // ============================================
-    // 2. CREATE CHICKEN TYPES
+    // 2. CHICKEN TYPES
     // ============================================
-    console.log('\n🐔 Creating chicken types...');
+    log('\n🐔 Creating chicken types...', 'blue');
     
     const chickenTypes = [
       { name: 'دجاج أبيض', description: 'White broiler chicken' },
@@ -65,19 +87,17 @@ async function seed() {
     ];
 
     for (const type of chickenTypes) {
-      const exists = await ChickenType.findOne({ where: { name: type.name } });
-      if (!exists) {
-        await ChickenType.create(type);
-        console.log(`   ✅ Created: ${type.name}`);
-      } else {
-        console.log(`   ⏭️  Already exists: ${type.name}`);
-      }
+      const [created, isNew] = await ChickenType.findOrCreate({
+        where: { name: type.name },
+        defaults: type
+      });
+      log(`   ${isNew ? '✅ Created' : '⏭️  Exists'}: ${type.name}`, isNew ? 'green' : 'yellow');
     }
 
     // ============================================
-    // 3. CREATE COST CATEGORIES
+    // 3. COST CATEGORIES
     // ============================================
-    console.log('\n💰 Creating cost categories...');
+    log('\n💰 Creating cost categories...', 'blue');
     
     const costCategories = [
       { name: 'وقود', description: 'Fuel costs', is_vehicle_cost: true },
@@ -92,19 +112,17 @@ async function seed() {
     ];
 
     for (const category of costCategories) {
-      const exists = await CostCategory.findOne({ where: { name: category.name } });
-      if (!exists) {
-        await CostCategory.create(category);
-        console.log(`   ✅ Created: ${category.name} (Vehicle: ${category.is_vehicle_cost})`);
-      } else {
-        console.log(`   ⏭️  Already exists: ${category.name}`);
-      }
+      const [created, isNew] = await CostCategory.findOrCreate({
+        where: { name: category.name },
+        defaults: category
+      });
+      log(`   ${isNew ? '✅ Created' : '⏭️  Exists'}: ${category.name} (Vehicle: ${category.is_vehicle_cost})`, isNew ? 'green' : 'yellow');
     }
 
     // ============================================
-    // 4. CREATE SAMPLE PARTNERS
+    // 4. PARTNERS
     // ============================================
-    console.log('\n👥 Creating sample partners...');
+    log('\n👥 Creating partners...', 'blue');
     
     const partners = [
       {
@@ -134,51 +152,54 @@ async function seed() {
     ];
 
     for (const partner of partners) {
-      const exists = await Partner.findOne({ where: { name: partner.name } });
-      if (!exists) {
-        await Partner.create(partner);
-        console.log(`   ✅ Created: ${partner.name} (${partner.investment_percentage}% - Vehicle Partner: ${partner.is_vehicle_partner})`);
-      } else {
-        console.log(`   ⏭️  Already exists: ${partner.name}`);
-      }
+      const [created, isNew] = await Partner.findOrCreate({
+        where: { name: partner.name },
+        defaults: partner
+      });
+      log(`   ${isNew ? '✅ Created' : '⏭️  Exists'}: ${partner.name} (${partner.investment_percentage}% - Vehicle: ${partner.is_vehicle_partner})`, isNew ? 'green' : 'yellow');
     }
 
     // ============================================
-    // 5. CREATE SAMPLE VEHICLE
+    // 5. VEHICLE
     // ============================================
-    console.log('\n🚛 Creating sample vehicle...');
+    log('\n🚛 Creating vehicle...', 'blue');
     
-    const vehicleExists = await Vehicle.findOne({ where: { plate_number: 'ABC 123' } });
-    if (!vehicleExists) {
-      const vehicle = await Vehicle.create({
+    const [vehicle, vehicleCreated] = await Vehicle.findOrCreate({
+      where: { plate_number: 'ABC 123' },
+      defaults: {
         name: 'Toyota Truck',
         purchase_price: 150000,
         empty_weight: 3500,
         plate_number: 'ABC 123'
-      });
+      }
+    });
 
-      // Assign vehicle to vehicle partners
+    if (vehicleCreated) {
+      log(`   ✅ Vehicle created: ${vehicle.name}`, 'green');
+      
+      // Assign to vehicle partners
       const vehiclePartners = await Partner.findAll({ where: { is_vehicle_partner: true } });
       const sharePercentage = 100 / vehiclePartners.length;
 
       for (const partner of vehiclePartners) {
-        await VehiclePartner.create({
-          vehicle_id: vehicle.id,
-          partner_id: partner.id,
-          share_percentage: sharePercentage
+        await VehiclePartner.findOrCreate({
+          where: { vehicle_id: vehicle.id, partner_id: partner.id },
+          defaults: {
+            vehicle_id: vehicle.id,
+            partner_id: partner.id,
+            share_percentage: sharePercentage.toFixed(2)
+          }
         });
       }
-
-      console.log(`   ✅ Created vehicle: ${vehicle.name} (${vehicle.plate_number})`);
-      console.log(`   ✅ Assigned to ${vehiclePartners.length} vehicle partners`);
+      log(`   ✅ Assigned to ${vehiclePartners.length} partners`, 'green');
     } else {
-      console.log('   ⏭️  Vehicle already exists');
+      log('   ⏭️  Vehicle already exists', 'yellow');
     }
 
     // ============================================
-    // 6. CREATE SAMPLE FARMS
+    // 6. FARMS
     // ============================================
-    console.log('\n🏡 Creating sample farms...');
+    log('\n🏡 Creating farms...', 'blue');
     
     const farms = [
       {
@@ -186,38 +207,36 @@ async function seed() {
         owner_name: 'عبد الله محمد',
         location: 'الفيوم، مصر',
         phone: '01111111111',
-        total_debt: 0
+        current_balance: 0
       },
       {
         name: 'مزرعة الأمل',
         owner_name: 'حسن علي',
         location: 'بني سويف، مصر',
         phone: '01222222222',
-        total_debt: 0
+        current_balance: 0
       },
       {
         name: 'مزرعة الخير',
         owner_name: 'سعيد أحمد',
         location: 'المنيا، مصر',
         phone: '01333333333',
-        total_debt: 0
+        current_balance: 0
       }
     ];
 
     for (const farm of farms) {
-      const exists = await Farm.findOne({ where: { name: farm.name } });
-      if (!exists) {
-        await Farm.create(farm);
-        console.log(`   ✅ Created: ${farm.name} - ${farm.owner_name}`);
-      } else {
-        console.log(`   ⏭️  Already exists: ${farm.name}`);
-      }
+      const [created, isNew] = await Farm.findOrCreate({
+        where: { name: farm.name },
+        defaults: farm
+      });
+      log(`   ${isNew ? '✅ Created' : '⏭️  Exists'}: ${farm.name} - ${farm.owner_name}`, isNew ? 'green' : 'yellow');
     }
 
     // ============================================
-    // 7. CREATE SAMPLE BUYERS
+    // 7. BUYERS
     // ============================================
-    console.log('\n🛒 Creating sample buyers...');
+    log('\n🛒 Creating buyers...', 'blue');
     
     const buyers = [
       {
@@ -241,39 +260,352 @@ async function seed() {
     ];
 
     for (const buyer of buyers) {
-      const exists = await Buyer.findOne({ where: { name: buyer.name } });
-      if (!exists) {
-        await Buyer.create(buyer);
-        console.log(`   ✅ Created: ${buyer.name}`);
-      } else {
-        console.log(`   ⏭️  Already exists: ${buyer.name}`);
-      }
+      const [created, isNew] = await Buyer.findOrCreate({
+        where: { name: buyer.name },
+        defaults: buyer
+      });
+      log(`   ${isNew ? '✅ Created' : '⏭️  Exists'}: ${buyer.name}`, isNew ? 'green' : 'yellow');
     }
+// ============================================
+// 1.5 PERMISSIONS
+// ============================================
+log('\n🔐 Creating permissions...', 'blue');
+
+const now = new Date();
+
+ const permissions = [
+  // ========================================
+  // النظام
+  // ========================================
+  {
+    key: 'APPLICATION_ADMIN',
+    name: 'أدمن التطبيق',
+    description: 'صلاحية كاملة للتحكم في جميع أجزاء النظام بدون قيود',
+    category: 'النظام',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // المستخدمين
+  // ========================================
+  {
+    key: 'MANAGE_USERS',
+    name: 'إدارة المستخدمين',
+    description: 'إضافة وتعديل وحذف المستخدمين',
+    category: 'المستخدمين',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_USERS',
+    name: 'عرض المستخدمين',
+    description: 'عرض قائمة المستخدمين وبياناتهم',
+    category: 'المستخدمين',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // الشركاء
+  // ========================================
+  {
+    key: 'MANAGE_PARTNERS',
+    name: 'إدارة الشركاء',
+    description: 'إضافة وتعديل وحذف الشركاء',
+    category: 'الشركاء',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_PARTNERS',
+    name: 'عرض الشركاء',
+    description: 'عرض بيانات الشركاء',
+    category: 'الشركاء',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // المزارع
+  // ========================================
+  {
+    key: 'MANAGE_FARMS',
+    name: 'إدارة المزارع',
+    description: 'إضافة وتعديل وحذف المزارع',
+    category: 'المزارع',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_FARMS',
+    name: 'عرض المزارع',
+    description: 'عرض بيانات وحركات المزارع',
+    category: 'المزارع',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // العملاء (محلات الفراخ)
+  // ========================================
+  {
+    key: 'MANAGE_BUYERS',
+    name: 'إدارة العملاء',
+    description: 'إضافة وتعديل وحذف العملاء',
+    category: 'محلات الفراخ',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_BUYERS',
+    name: 'عرض العملاء',
+    description: 'عرض بيانات العملاء',
+    category: 'محلات الفراخ',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // المركبات
+  // ========================================
+  {
+    key: 'MANAGE_VEHICLES',
+    name: 'إدارة السيارات',
+    description: 'إضافة وتعديل وحذف السيارات',
+    category: 'المركبات',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_VEHICLES',
+    name: 'عرض السيارات',
+    description: 'عرض بيانات السيارات',
+    category: 'المركبات',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // إغلاق اليوم
+  // ========================================
+  {
+    key: 'CLOSE_OPERATION',
+    name: 'إغلاق العملية اليومية',
+    description: 'إغلاق اليوم لكل عمليات التشغيل',
+    category: 'اغلاق اليوم',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // العمليات
+  // ========================================
+  {
+    key: 'RECORD_FARM_LOADING',
+    name: 'تسجيل تحميل من مزرعة',
+    description: 'تسجيل كميات التحميل من المزارع',
+    category: 'العمليات',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'RECORD_SALE',
+    name: 'تسجيل عملية بيع',
+    description: 'تسجيل عمليات البيع',
+    category: 'العمليات',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'RECORD_TRANSPORT_LOSS',
+    name: 'تسجيل فاقد النقل',
+    description: 'تسجيل فاقد النقل أثناء التشغيل',
+    category: 'العمليات',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'RECORD_COST',
+    name: 'تسجيل التكاليف',
+    description: 'تسجيل التكاليف اليومية',
+    category: 'العمليات',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // الدواجن
+  // ========================================
+  {
+    key: 'MANAGE_CHICKEN_TYPES',
+    name: 'إدارة أنواع الدواجن',
+    description: 'إضافة وتعديل أنواع الدواجن',
+    category: 'الدواجن',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_CHICKEN_TYPES',
+    name: 'عرض انواع الدواجن',
+    description: 'عرض انواع الدواجن',
+    category: 'الدواجن',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // التكاليف
+  // ========================================
+  {
+    key: 'MANAGE_COST_CATEGORIES',
+    name: 'إدارة بنود التكاليف',
+    description: 'إضافة وتعديل بنود التكاليف',
+    category: 'التكاليف',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_COST_CATEGORIES',
+    name: 'عرض انواع التكاليف',
+    description: 'عرض انواع التكاليف',
+    category: 'التكاليف',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+
+  // ========================================
+  // التقارير
+  // ========================================
+  {
+    key: 'VIEW_DAILY_REPORT',
+    name: 'عرض التقرير اليومي',
+    description: 'عرض تقرير التشغيل اليومي',
+    category: 'التقارير',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_PERIOD_REPORT',
+    name: 'عرض تقرير فترة',
+    description: 'عرض تقارير حسب فترة زمنية',
+    category: 'التقارير',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_PROFIT_REPORT',
+    name: 'عرض تقارير الأرباح',
+    description: 'عرض تقارير الأرباح والتوزيع',
+    category: 'التقارير',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  },
+  {
+    key: 'VIEW_DEBT_REPORT',
+    name: 'عرض تقارير المديونيات',
+    description: 'عرض تقارير ديون المزارع والعملاء',
+    category: 'التقارير',
+    is_active: true,
+    created_at: now,
+    updated_at: now
+  }
+];
+
+for (const permission of permissions) {
+  const [created, isNew] = await Permission.findOrCreate({
+    where: { key: permission.key },
+    defaults: permission
+  });
+
+  log(
+    `   ${isNew ? '✅ Created' : '⏭️  Exists'}: ${permission.key}`,
+    isNew ? 'green' : 'yellow'
+  );
+}
+
+
+// ============================================
+// ASSIGN APPLICATION_ADMIN TO ADMIN ONLY
+// ============================================
+log('\n🛡️ Assigning APPLICATION_ADMIN to admin...', 'blue');
+
+const admin = await User.findOne({ where: { username: 'admin' } });
+const adminPermission = await Permission.findOne({
+  where: { key: 'APPLICATION_ADMIN' }
+});
+
+if (!admin) {
+  log('   ❌ Admin user not found', 'red');
+} else if (!adminPermission) {
+  log('   ❌ APPLICATION_ADMIN permission not found', 'red');
+} else {
+  await UserPermission.findOrCreate({
+    where: {
+      user_id: admin.id,
+      permission_id: adminPermission.id
+    },
+    defaults: {
+      user_id: admin.id,
+      permission_id: adminPermission.id,
+      granted_by: admin.id // self granted (system admin)
+    }
+  });
+
+  log('   ✅ APPLICATION_ADMIN assigned to admin', 'green');
+}
+
+
 
     // ============================================
     // SUMMARY
     // ============================================
-    console.log('\n' + '='.repeat(50));
-    console.log('🎉 Database seeding completed successfully!');
-    console.log('='.repeat(50));
-    console.log('\n📊 Summary:');
-    console.log(`   - Users: ${await User.count()}`);
-    console.log(`   - Partners: ${await Partner.count()}`);
-    console.log(`   - Vehicles: ${await Vehicle.count()}`);
-    console.log(`   - Farms: ${await Farm.count()}`);
-    console.log(`   - Buyers: ${await Buyer.count()}`);
-    console.log(`   - Chicken Types: ${await ChickenType.count()}`);
-    console.log(`   - Cost Categories: ${await CostCategory.count()}`);
+    log('\n' + '='.repeat(50), 'blue');
+    log('🎉 Database seeding completed!', 'green');
+    log('='.repeat(50), 'blue');
+    log('\n📊 Summary:', 'blue');
+    log(`   - Users: ${await User.count()}`, 'yellow');
+    log(`   - Partners: ${await Partner.count()}`, 'yellow');
+    log(`   - Vehicles: ${await Vehicle.count()}`, 'yellow');
+    log(`   - Farms: ${await Farm.count()}`, 'yellow');
+    log(`   - Buyers: ${await Buyer.count()}`, 'yellow');
+    log(`   - Chicken Types: ${await ChickenType.count()}`, 'yellow');
+    log(`   - Cost Categories: ${await CostCategory.count()}`, 'yellow');
     
-    console.log('\n🚀 You can now start the server with: npm run dev');
-    console.log('\n🔐 Default credentials:');
-    console.log('   Admin: username=admin, password=admin123');
-    console.log('   User:  username=user,  password=user123');
+    log('\n🚀 Next steps:', 'blue');
+    log('   1. Start your backend: npm run dev', 'yellow');
+    log('   2. Login with: admin / admin123\n', 'yellow');
     
+    await sequelize.close();
     process.exit(0);
   } catch (error) {
     console.error('❌ Seeding failed:', error);
     console.error('\nError details:', error.message);
+    if (error.stack) console.error(error.stack);
+    await sequelize.close();
     process.exit(1);
   }
 }

@@ -2,15 +2,20 @@
 require('dotenv').config();
 const app = require('./src/app');
 const { testConnection } = require('./src/config/database');
+const { scheduleAutoCloseDaily } = require('./src/jobs/autoCloseScheduler');
+const { initializeSchedulers, stopSchedulers } = require('./src/jobs/BackupScheduler');
+const { sequelize } = require('./src/config/database');
 
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+let schedulers;
 
 // Test database connection before starting server
 async function startServer() {
   try {
     // Test database connection
     await testConnection();
+        
 
     // Start server
     const server = app.listen(PORT, () => {
@@ -45,6 +50,15 @@ async function startServer() {
         console.log('   - CORS enabled for: ' + (process.env.CORS_ORIGIN || 'http://localhost:4200'));
         console.log('   - Hot reload with: npm run dev\n');
       }
+
+      
+    // ✅ Start scheduled jobs
+    console.log('✅ Scheduled jobs initialized');
+
+        scheduleAutoCloseDaily();
+
+          schedulers = initializeSchedulers();
+
     });
 
     // Graceful shutdown handler
@@ -56,13 +70,17 @@ async function startServer() {
         
         // Close database connections
         try {
-          const { sequelize } = require('./src/config/database');
+          
           await sequelize.close();
           console.log('🔴 Database connections closed');
         } catch (error) {
           console.error('Error closing database:', error);
         }
-        
+        if (schedulers) {
+          console.log('Stopping schedulers...');
+          stopSchedulers(schedulers);
+        }
+
         console.log('✅ Graceful shutdown completed');
         process.exit(0);
       });

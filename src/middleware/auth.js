@@ -8,7 +8,7 @@ exports.authenticate = (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'No token provided'
+        message: 'لم يتم توفير رمز مميز'
       });
     }
 
@@ -18,21 +18,21 @@ exports.authenticate = (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
-      message: 'Invalid or expired token'
+      message: 'رمز غير صالح أو منتهي الصلاحية'
     });
   }
 };
 
-exports.authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Insufficient permissions'
-      });
-    }
-    next();
-  };
-};
+// exports.authorize = (...roles) => {
+//   return (req, res, next) => {
+//     if (!roles.includes(req.user.role)) {
+//       return res.status(403).json({
+//         success: false,
+//         message: 'Insufficient permissions'
+//       });
+//     }
+//     next();
+//   };
+// };
 
  

@@ -4,7 +4,7 @@ exports.getAllVehicles = async (req, res) => {
   try {
     const vehicles = await Vehicle.findAll({
       include: [{
-        model: Partner,
+        model: Partner, as: 'partners',
         through: { attributes: ['share_percentage'] }
       }],
       order: [['name', 'ASC']]
@@ -17,7 +17,7 @@ exports.getAllVehicles = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error fetching vehicles'
+      message: error.message
     });
   }
 };
@@ -26,7 +26,7 @@ exports.getVehicleById = async (req, res) => {
   try {
     const vehicle = await Vehicle.findByPk(req.params.id, {
       include: [{
-        model: Partner,
+        model: Partner,as: 'partner',
         through: { attributes: ['share_percentage'] }
       }]
     });
@@ -52,14 +52,13 @@ exports.getVehicleById = async (req, res) => {
 
 exports.createVehicle = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { partners, ...vehicleData } = req.body;
 
     const vehicle = await Vehicle.create(vehicleData, { transaction });
 
-    // Create vehicle-partner associations
-    if (partners && partners.length > 0) {
+    if (partners?.length) {
       for (const partner of partners) {
         await VehiclePartner.create({
           vehicle_id: vehicle.id,
@@ -69,28 +68,37 @@ exports.createVehicle = async (req, res) => {
       }
     }
 
+    // ✅ commit بعد عمليات DB فقط
     await transaction.commit();
 
+    // ⬅️ أي قراءة تكون خارج الترانزاكشن
     const fullVehicle = await Vehicle.findByPk(vehicle.id, {
       include: [{
         model: Partner,
+        as: 'partners',
         through: { attributes: ['share_percentage'] }
       }]
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: fullVehicle
     });
+
   } catch (error) {
-    await transaction.rollback();
-    res.status(500).json({
+    // ✅ اعمل rollback فقط لو الترانزاكشن لسه مفتوحة
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
+
+    return res.status(500).json({
       success: false,
       message: 'Error creating vehicle',
       error: error.message
     });
   }
 };
+
 
 exports.updateVehicle = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -130,7 +138,7 @@ exports.updateVehicle = async (req, res) => {
 
     const fullVehicle = await Vehicle.findByPk(vehicle.id, {
       include: [{
-        model: Partner,
+        model: Partner,as: 'partner',
         through: { attributes: ['share_percentage'] }
       }]
     });

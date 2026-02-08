@@ -1,49 +1,44 @@
 const express = require('express');
 const cors = require('cors');
-const morgan = require('morgan');
+const morgan = require('morgan'); 
+
+
 require('dotenv').config();
 
-const routes = require('./routes');
-const { testConnection } = require('./config/database');
+const routes = require('./routes'); 
+const AppError = require('./utils/app-error.utility');
+const errorHandleMiddleware = require('./middleware/error-handle.middleware');
 
 const app = express();
+
 
 // Middleware
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
-  credentials: true
+  credentials: true,
+  methods:['GET','POST','PUT','DELETE','PATCH'],
+  allowedOrigns:['content-type','Authorization'] 
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+app.use(morgan('combined'));
 
-// Routes
-app.use('/api', routes);
 
+ 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date() });
+  res.json({ status: 'OK', timestamp:  new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
+app.use('/api', routes);
 
 // 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  });
+app.use((req, res, next) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server`, 404));
 });
 
-// Test database connection
-testConnection();
+// Global error handler
+app.use(errorHandleMiddleware);
 
 module.exports = app;

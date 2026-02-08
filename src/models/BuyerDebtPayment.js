@@ -27,17 +27,16 @@ const BuyerDebtPayment = sequelize.define('BuyerDebtPayment', {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false
   },
-  payment_date: {
-    type: DataTypes.DATEONLY,
-    allowNull: false
-  },
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
   }
 }, {
   tableName: 'buyer_debt_payments',
-  timestamps: false
+  timestamps: true,
+  createdAt: 'payment_date',
+  updatedAt: false,
+  underscored: true,
 });
 
 module.exports = BuyerDebtPayment;

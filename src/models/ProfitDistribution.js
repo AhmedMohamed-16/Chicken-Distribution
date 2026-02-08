@@ -39,11 +39,22 @@ const ProfitDistribution = sequelize.define('ProfitDistribution', {
   net_profit: {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false
-  }
+  },
+  lossesWithFarm: {           
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,   
+       field: 'losseswithfarm'  
+  },
+  lossesWithoutFarm: {       
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+     field: 'losseswithoutfarm' 
+  },
 }, {
   tableName: 'profit_distributions',
   timestamps: true,
   createdAt: 'calculated_at',
-  updatedAt: false
+  updatedAt: false,
+  underscored: false 
 });
 module.exports = ProfitDistribution;
