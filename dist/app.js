@@ -1,0 +1,5 @@
+"use strict";var express=require("express"),cors=require("cors"),morgan=require("morgan");require("dotenv").config();var routes=require("./routes"),AppError=require("./utils/app-error.utility"),errorHandleMiddleware=require("./middleware/error-handle.middleware"),app=express();// Middleware
+// Health check
+// 404 handler
+// Global error handler
+app.use(cors({origin:process.env.CORS_ORIGIN||"http://localhost:4200",credentials:!0,methods:["GET","POST","PUT","DELETE","PATCH"],allowedOrigns:["content-type","Authorization"]})),app.use(express.json()),app.use(express.urlencoded({extended:!0})),app.use(morgan("combined")),app.get("/health",function(a,b){b.json({status:"OK",timestamp:new Date().toLocaleString("en-GB",{timeZone:"Africa/Cairo"})})}),app.use("/api",routes),app.use(function(a,b,c){c(new AppError("Can't find ".concat(a.originalUrl," on this server"),404))}),app.use(errorHandleMiddleware),module.exports=app;
