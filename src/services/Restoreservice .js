@@ -11,7 +11,7 @@ const path = require('path');
 const unzipper = require('unzipper');
 const { sequelize } = require('../config/database');
 const { models } = require('../models');
-const { getCairoTimestampForFile } = require('../utils/CairoTimestampForFile');
+const {getCairoTimestampForFile} = require('../utils/CairoTimestampForFile');
 
 /**
  * Extract ZIP file to temporary directory
