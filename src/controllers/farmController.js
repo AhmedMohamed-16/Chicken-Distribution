@@ -426,7 +426,7 @@ exports.getFarmDebtHistory = async (req, res, next) => {
     });
 
     // ترتيب من الأحدث للأقدم
-    events.sort((a, b) => new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+    events.sort((a, b) => new Date(b.date)- new Date(a.date));
 
     // أخذ آخر N حدث فقط بعد الدمج
     const recentEvents = events.slice(0, limit);
@@ -473,7 +473,7 @@ exports.getFarmDebtHistory = async (req, res, next) => {
     });
 
     // ترتيب من الأقدم للأحدث في النهاية (زي ما كان)
-    history.sort((a, b) => new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+    history.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // حساب الـ calculated_balance من أول سجل في الـ history
     const calculatedBalance = history.length > 0 

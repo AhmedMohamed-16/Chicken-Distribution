@@ -760,7 +760,7 @@ class VehicleOperationController {
     // Update vehicle operation status
     await vehicleOp.update({
       status: 'COMPLETED',
-      completed_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+      completed_at: new Date(),
       completion_notes: notes || null
     }, { transaction });
     
@@ -910,7 +910,7 @@ static async reopenVehicleOperation(req, res) {
       status: 'ACTIVE',
       completed_at: null,
       completion_notes: null,
-      reopened_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+      reopened_at: new Date(),
       reopened_by: req.user.id
     }, { transaction });
     

@@ -299,7 +299,7 @@ exports.getPermissionStatistics = async (req, res) => {
     });
     
     // Get recently granted (last 30 days)
-    const thirtyDaysAgo = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const recentlyGranted = await UserPermission.count({

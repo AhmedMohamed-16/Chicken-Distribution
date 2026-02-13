@@ -157,7 +157,7 @@ User.prototype.grantPermission = async function(permissionId, grantedBy) {
     },
     defaults: {
       granted_by: grantedBy,
-      granted_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+      granted_at: new Date()
     }
   });
   
@@ -200,8 +200,7 @@ User.prototype.syncPermissions = async function(permissionIds, grantedBy) {
   const newPermissions = permissionIds.map(permissionId => ({
     user_id: this.id,
     permission_id: permissionId,
-    granted_by: grantedBy,
-    granted_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+    granted_by: grantedBy
   }));
   
   const created = await UserPermission.bulkCreate(newPermissions);

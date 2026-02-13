@@ -152,7 +152,7 @@ const createZipArchive = async (tempDir, zipPath) => {
 
       // Add metadata file
       const metadata = {
-        backupDate: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+        backupDate: new Date(),
         databaseName: process.env.DB_NAME,
         version: '1.0.0',
         tableCount: files.length
@@ -212,7 +212,7 @@ const createBackup = async (userId = 1) => {
     backupRecord = await UserBackup.create({
       user_id: userId,
       backup_name: backupFilename,
-      backup_date: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+      backup_date: new Date(),
       status: 'PENDING'
     });
 
@@ -297,7 +297,7 @@ const listBackups = async () => {
  */
 const cleanOldBackups = async (retentionDays = 90) => {
   try {
-    const cutoffDate = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
     const oldBackups = await UserBackup.findAll({

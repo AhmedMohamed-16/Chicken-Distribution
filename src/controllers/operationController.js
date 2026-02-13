@@ -2306,7 +2306,7 @@ exports.closeDailyOperation = async (req, res) => {
     // Update operation status
     await operation.update({
       status: 'CLOSED',
-      closed_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+      closed_at: new Date()
     }, { transaction });
 
     await transaction.commit();
@@ -2805,7 +2805,7 @@ exports.getCostCategoryStatistics = async (req, res) => {
     const dateFilter = {};
     if (start_date && end_date) {
       dateFilter.recorded_at = {
-        [Op.between]: [new Date(start_date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }), new Date(end_date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })]
+        [Op.between]: [new Date(start_date), new Date(end_date)]
       };
     }
 

@@ -40,7 +40,7 @@ class PeriodReportService {
       // بناء التقرير الشامل
       const report = {
         report_type: 'PERIOD_SUMMARY',
-        generated_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+        generated_at: new Date(),
         period: this.buildPeriodInfo(startDate, endDate, operations),
         executive_summary: await this.buildExecutiveSummary(operations, startDate, endDate),
         revenue_breakdown: await this.buildRevenueBreakdown(operations),
@@ -95,8 +95,8 @@ class PeriodReportService {
    * بناء قسم معلومات الفترة
    */
   static buildPeriodInfo(startDate, endDate, operations) {
-    const start = new Date(startDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-    const end = new Date(endDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     const durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
     
     // الحصول على المركبات المستخدمة
@@ -406,14 +406,14 @@ const total_losses = parseFloat(losses[0]?.total_losses_without_farms || 0);
   static async calculateTrends(startDate, endDate, currentFinancials) {
     try {
       // حساب تواريخ الفترة السابقة
-      const start = new Date(startDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-      const end = new Date(endDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      const start = new Date(startDate);
+      const end = new Date(endDate);
       const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
       
-      const previousEnd = new Date(start).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      const previousEnd = new Date(start);
       previousEnd.setDate(previousEnd.getDate() - 1);
       
-      const previousStart = new Date(previousEnd).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      const previousStart = new Date(previousEnd);
       previousStart.setDate(previousStart.getDate() - duration + 1);
 
       // الحصول على عمليات الفترة السابقة
@@ -1097,14 +1097,14 @@ const total_losses = parseFloat(losses[0]?.total_losses_without_farms || 0);
    */
   static async buildPeriodComparison(startDate, endDate, currentOps) {
     try {
-      const start = new Date(startDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-      const end = new Date(endDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      const start = new Date(startDate);
+      const end = new Date(endDate);
       const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
       
-      const previousEnd = new Date(start).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      const previousEnd = new Date(start);
       previousEnd.setDate(previousEnd.getDate() - 1);
       
-      const previousStart = new Date(previousEnd).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      const previousStart = new Date(previousEnd);
       previousStart.setDate(previousStart.getDate() - duration + 1);
 
       const previousOps = await this.getOperationsInPeriod(
@@ -1183,8 +1183,8 @@ const total_losses = parseFloat(losses[0]?.total_losses_without_farms || 0);
    * تنسيق تسمية الفترة
    */
   static formatPeriodLabel(startDate, endDate) {
-    const start = new Date(startDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-    const end = new Date(endDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     
     const monthNames = [
       'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',

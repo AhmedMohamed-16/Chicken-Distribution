@@ -539,12 +539,12 @@ exports.getBuyerDebtHistory = async (req, res, next) => {
 
     // Create a Set of transaction timestamps for quick lookup
     const transactionTimestamps = new Set(
-      transactions.map(t =>  new Date(t.transaction_time).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }).getTime())
+      transactions.map(t =>  new Date(t.transaction_time).getTime())
     );
 
     // Filter out payments that have the exact same timestamp as any transaction
     const filteredPayments = payments.filter(p => {
-      const paymentTimestamp = new Date(p.payment_date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }).getTime();
+      const paymentTimestamp = new Date(p.payment_date).getTime();
       return !transactionTimestamps.has(paymentTimestamp);
     });
 
@@ -577,7 +577,7 @@ exports.getBuyerDebtHistory = async (req, res, next) => {
     });
 
     // ترتيب من الأحدث للأقدم
-    events.sort((a, b) => new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+    events.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // أخذ آخر N حدث فقط بعد الدمج
     const recentEvents = events.slice(0, limit);
@@ -626,7 +626,7 @@ exports.getBuyerDebtHistory = async (req, res, next) => {
     });
 
     // ترتيب من الأقدم للأحدث في النهاية (زي ما كان)
-    history.sort((a, b) => new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+    history.sort((a, b) => new Date(a.date)- new Date(b.date));
 
     // حساب الـ calculated_debt من آخر سجل في الـ history
     const calculatedDebt = history.length > 0 

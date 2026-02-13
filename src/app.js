@@ -14,7 +14,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+  origin: [process.env.CORS_ORIGIN , 'http://localhost:4200'],
   credentials: true,
   methods:['GET','POST','PUT','DELETE','PATCH'],
   allowedOrigns:['content-type','Authorization'] 

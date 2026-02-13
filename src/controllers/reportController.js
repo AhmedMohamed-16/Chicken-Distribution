@@ -2079,7 +2079,7 @@ consolidatedReport.profit_distribution.totals.total_losses =
       data: {
         report_date: date,
         operations_count: operations.length,
-        report_generated_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+        report_generated_at: new Date(),
         operation: consolidatedReport
       }
     });
@@ -2207,8 +2207,8 @@ exports.getPeriodReport = async (req, res) => {
     }
 
     // Date range validation
-    const startDate = new Date(from).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-    const endDate = new Date(to).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const startDate = new Date(from);
+    const endDate = new Date(to);
 
     if (startDate > endDate) {
       return res.status(400).json({
@@ -2369,8 +2369,8 @@ exports.getProfitAnalysis = async (req, res) => {
     }
 
     // Validate date range
-    const startDate = new Date(from).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-    const endDate = new Date(to).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const startDate = new Date(from);
+    const endDate = new Date(to);
 
     if (startDate > endDate) {
       return res.status(400).json({
@@ -2744,7 +2744,7 @@ exports.getBuyerStatement = async (req, res) => {
     });
 
     // Sort chronologically
-    allEntries.sort((a, b) => new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+    allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // ✅ Step 7: Calculate running balance
     let runningBalance = openingBalance;
@@ -3184,7 +3184,7 @@ exports.getFarmStatement = async (req, res) => {
     });
 
     // Sort chronologically
-    allEntries.sort((a, b) => new Date(a.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }) - new Date(b.date).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));
+    allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // ========================================
     // CALCULATE RUNNING BALANCE

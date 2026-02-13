@@ -16,7 +16,7 @@ const scheduleMonthlyBackup = () => {
   // 0      0    1   *     *
   // Runs at 00:00 on day 1 of every month
   
-  const monthlyBackupJob = cron.schedule('51 21 * * *', async () => {
+  const monthlyBackupJob = cron.schedule('* * 1 * *', async () => {
     console.log('\n========================================');
     console.log('Scheduled Monthly Backup Starting...');
     console.log('Time:', new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }));

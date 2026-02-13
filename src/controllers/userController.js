@@ -195,7 +195,7 @@ exports.createUser = async (req, res) => {
         user_id: user.id,
         permission_id: permissionId,
         granted_by: grantedBy,
-        granted_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+        granted_at: new Date()
       }));
       
       await UserPermission.bulkCreate(userPermissions, { transaction });

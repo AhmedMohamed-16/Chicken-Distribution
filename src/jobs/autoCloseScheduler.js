@@ -4,7 +4,7 @@ const { autoCloseDailyOperations } = require('../services/autoCloseService');
 const scheduleAutoCloseDaily = () => {
   cron.schedule('50 23 * * *', async () => {
     try {
-      console.log(`[${new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })}] Running daily auto-close job...`);
+      console.log(`[${new Date()}] Running daily auto-close job...`);
 
       const closedCount = await autoCloseDailyOperations();
 

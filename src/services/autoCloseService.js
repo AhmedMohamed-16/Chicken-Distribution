@@ -6,7 +6,7 @@ exports.autoCloseDailyOperations = async () => {
   const transaction = await sequelize.transaction();
 
   try {
-    const today = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const today = new Date();
 
     // ✅ نجيب بس العمليات المفتوحة
     const operations = await DailyOperation.findAll({
@@ -30,7 +30,7 @@ exports.autoCloseDailyOperations = async () => {
 
       await operation.update({
         status: 'CLOSED',
-        closed_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+        closed_at: new Date()
       }, { transaction });
     }
 

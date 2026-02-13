@@ -909,7 +909,7 @@ const operation = await DailyOperation.findOne({
       // Update operation status
       await operation.update({
         status: 'CLOSED',
-        closed_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+        closed_at: new Date()
       }, { transaction });
       
       return {

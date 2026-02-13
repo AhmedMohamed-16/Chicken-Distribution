@@ -40,7 +40,7 @@ class ProfitReportService {
       // بناء تقرير الأرباح الشامل
       const report = {
         report_type: 'PROFIT_ANALYSIS',
-        generated_at: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+        generated_at: new Date(),
         period: await this.buildPeriodInfo(startDate, endDate, operations),
         
         '1_profit_composition_analysis': await this.buildProfitComposition(operations),
@@ -110,8 +110,8 @@ class ProfitReportService {
    * بناء معلومات الفترة
    */
   static async buildPeriodInfo(startDate, endDate, operations) {
-    const start = new Date(startDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-    const end = new Date(endDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     const durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
     
     const uniqueOperationDates = new Set(operations.map(op => op.operation_date));
@@ -347,14 +347,14 @@ class ProfitReportService {
     const cost_burden_per_kg = total_sold_kg > 0 ? total_costs / total_sold_kg : 0;
 
     // مقارنة الفترة السابقة
-    const start = new Date(startDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
-    const end = new Date(endDate).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
     
-    const previousEnd = new Date(start).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const previousEnd = new Date(start);
     previousEnd.setDate(previousEnd.getDate() - 1);
     
-    const previousStart = new Date(previousEnd).toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+    const previousStart = new Date(previousEnd);
     previousStart.setDate(previousStart.getDate() - duration + 1);
 
     const previousOps = await this.getClosedOperations(
